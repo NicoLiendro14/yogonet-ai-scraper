@@ -7,6 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 import logging
+import os
 
 class YogonetScraper:
     """
@@ -14,14 +15,20 @@ class YogonetScraper:
     Extracts titles, kickers, images, and links from news articles.
     """
     
-    def __init__(self, headless=True):
+    def __init__(self, headless=None):
         """
         Initialize the scraper with Chrome WebDriver.
         
         Args:
-            headless (bool): Whether to run Chrome in headless mode
+            headless (bool): Whether to run Chrome in headless mode. If None, uses HEADLESS env var.
         """
         self.logger = logging.getLogger(__name__)
+        
+        if headless is None:
+            headless_env = os.environ.get("HEADLESS", "false").lower()
+            headless = headless_env in ("true", "1", "yes")
+            self.logger.info(f"Using HEADLESS environment setting: {headless}")
+        
         self.setup_driver(headless)
         
     def setup_driver(self, headless):
@@ -32,32 +39,54 @@ class YogonetScraper:
             headless (bool): Whether to run Chrome in headless mode
         """
         chrome_options = Options()
-        if headless:
-            chrome_options.add_argument("--headless")
         
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=1920,1080")
+        chrome_env_options = os.environ.get("CHROME_OPTIONS", "")
+        if chrome_env_options:
+            self.logger.info(f"Using Chrome options from environment: {chrome_env_options}")
+            for option in chrome_env_options.split():
+                chrome_options.add_argument(option)
+        else:
+            if headless:
+                chrome_options.add_argument("--headless")
+            
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
         
-        service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        chrome_options.add_argument("--verbose")
+        chrome_options.add_argument("--log-level=0")
         
-    def scrape_news(self, url="https://www.yogonet.com/international/", max_articles=10):
+        try:
+            service = Service(ChromeDriverManager().install())
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            self.logger.info("Chrome WebDriver initialized with ChromeDriverManager")
+        except Exception as e:
+            self.logger.warning(f"Error using ChromeDriverManager: {str(e)}")
+            self.logger.info("Falling back to default Chrome WebDriver")
+            self.driver = webdriver.Chrome(options=chrome_options)
+            self.logger.info("Chrome WebDriver initialized with default settings")
+        
+    def scrape_news(self, url="https://www.yogonet.com/international/", max_articles=None):
         """
         Scrape news articles from Yogonet.
         
         Args:
             url (str): The URL to scrape
-            max_articles (int): Maximum number of articles to scrape
+            max_articles (int): Maximum number of articles to scrape. If None, uses MAX_ARTICLES env var.
             
         Returns:
             list: List of dictionaries containing article data
         """
-        self.logger.info(f"Starting to scrape {url}")
+        if max_articles is None:
+            max_articles = int(os.environ.get("MAX_ARTICLES", "10"))
+            self.logger.info(f"Using MAX_ARTICLES environment setting: {max_articles}")
+        
+        self.logger.info(f"Starting to scrape {url} for up to {max_articles} articles")
         self.driver.get(url)
         
         time.sleep(3)
+        self.logger.info(f"Page loaded with title: {self.driver.title}")
         
         try:
             article_containers = WebDriverWait(self.driver, 10).until(

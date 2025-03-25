@@ -9,7 +9,9 @@ A Google Cloud Run job that performs web scraping, data processing, and automate
 ├── deployment/          # Deployment scripts
 │   └── deploy.sh        # Google Cloud Run deployment script
 ├── docker/              # Docker files
-│   └── Dockerfile       # Dockerfile for building the image
+│   ├── Dockerfile       # Dockerfile for building the image
+│   ├── build-and-run.sh # Bash script to build and run the Docker container
+│   └── build-and-run.ps1 # PowerShell script to build and run the Docker container
 ├── output/              # Output directory (created at runtime)
 ├── src/                 # Source code
 │   ├── database/        # BigQuery integration code
@@ -46,10 +48,19 @@ Uploads the processed data to Google BigQuery for further analysis:
 - Uses Google Cloud service account credentials for authentication
 - Handles data type conversion for proper BigQuery storage
 
+### 4. Dockerization
+
+Complete containerization of the application for portable execution:
+- Includes Chrome browser installation for headless web scraping
+- Environment variable configuration for flexible settings
+- Built-in health checks and error handling
+- Optimized layer caching for faster builds
+- Scripts for building and running the container
+
 ## Requirements
 
 - Python 3.8+
-- Chrome/Chromium (for Selenium)
+- Chrome/Chromium (for local development)
 - Docker (for containerization)
 - Google Cloud account with BigQuery and Cloud Run permissions
 
@@ -59,7 +70,7 @@ Uploads the processed data to Google BigQuery for further analysis:
 
 1. Create a Google Cloud project
 2. Create a service account with BigQuery permissions
-3. Download the service account key as JSON
+3. Download the service account key as JSON and save it as `creds.json` in the project root
 
 ### Local Setup
 
@@ -94,18 +105,86 @@ Uploads the processed data to Google BigQuery for further analysis:
 
 ## Docker Execution
 
-1. Build the Docker image:
-   ```
-   docker build -t yogonet-scraper -f docker/Dockerfile .
-   ```
+### Using the Convenience Scripts
 
-2. Run the container with your Google Cloud credentials:
-   ```
-   docker run -v $(pwd)/output:/app/output \
-     -v /path/to/credentials.json:/app/credentials/service_account.json \
-     -e GOOGLE_CLOUD_PROJECT="your-project-id" \
-     yogonet-scraper
-   ```
+#### On Linux/macOS:
+```bash
+# Make the script executable
+chmod +x docker/build-and-run.sh
+
+# Run the script
+./docker/build-and-run.sh
+```
+
+#### On Windows (PowerShell):
+```powershell
+# Run the script
+.\docker\build-and-run.ps1
+```
+
+### Manual Docker Commands
+
+#### Building the Docker Image
+
+```bash
+# From the project root directory
+docker build -t yogonet-scraper -f docker/Dockerfile .
+```
+
+#### Running the Container
+
+##### On Linux/macOS:
+```bash
+docker run -it --rm \
+  -v "$(pwd)/output:/app/output" \
+  -v "$(pwd)/creds.json:/app/credentials/service_account.json" \
+  -e GOOGLE_CLOUD_PROJECT="your-project-id" \
+  yogonet-scraper
+```
+
+##### On Windows (CMD/PowerShell):
+```powershell
+docker run -it --rm ^
+  -v "%cd%\output:/app/output" ^
+  -v "%cd%\creds.json:/app/credentials/service_account.json" ^
+  -e GOOGLE_CLOUD_PROJECT="your-project-id" ^
+  yogonet-scraper
+```
+
+##### On Windows (Git Bash/MINGW64):
+```bash
+# This command works in Git Bash environment
+docker run -it --rm \
+  -v "C:/Users/YourUsername/path/to/project/output:/app/output" \
+  -v "C:/Users/YourUsername/path/to/project/creds.json:/app/credentials/service_account.json" \
+  -e GOOGLE_CLOUD_PROJECT="your-project-id" \
+  yogonet-scraper
+```
+
+Example with actual paths:
+```bash
+docker run -it --rm \
+  -v "C:/Users/Nicolas/Downloads/pipol/output:/app/output" \
+  -v "C:/Users/Nicolas/Downloads/pipol/creds.json:/app/credentials/service_account.json" \
+  -e GOOGLE_CLOUD_PROJECT="nice-storm-454804-h9" \
+  yogonet-scraper
+```
+
+> **Note for Windows users**: When using Docker in Windows environments, especially with MINGW64 (Git Bash), use absolute Windows-style paths with forward slashes as shown above.
+
+## Environment Variables
+
+The application can be configured using the following environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GOOGLE_CLOUD_PROJECT` | Google Cloud Project ID | (required) |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account credentials | `/app/credentials/service_account.json` |
+| `BIGQUERY_DATASET_ID` | BigQuery dataset ID | `yogonet_news` |
+| `BIGQUERY_TABLE_ID` | BigQuery table ID | `scraped_articles` |
+| `MAX_ARTICLES` | Maximum number of articles to scrape | `10` |
+| `HEADLESS` | Whether to run Chrome in headless mode | `true` |
+| `CHROME_OPTIONS` | Custom Chrome options | (built-in safe defaults) |
 
 ## Output
 
