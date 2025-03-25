@@ -35,21 +35,44 @@ The scraper extracts the following information from each Yogonet (https://www.yo
 - **Image**: Article image URL
 - **Link**: URL to the full article
 
-### 2. Data Processing with Pandas
+### 2. AI-Assisted Dynamic Scraping
+
+The scraper uses artificial intelligence to adapt to changes in website structure:
+- **Automatic selector detection**: Uses OpenAI API to analyze HTML and determine optimal CSS selectors
+- **Resilience to layout changes**: Adapts if the site changes its HTML structure, CSS classes, or element hierarchy
+- **Fallback mechanism**: Uses predefined selectors if AI analysis fails or is disabled
+- **Zero configuration**: Works out of the box with minimal setup
+
+How it works:
+1. The scraper loads the target webpage
+2. The HTML structure is sent to OpenAI's GPT model
+3. The AI analyzes the HTML and determines the most accurate CSS selectors
+4. These selectors are used to extract the content
+5. If any selector fails, the system logs the issue and uses fallbacks
+
+This approach allows the scraper to:
+- Adapt to website redesigns without code changes
+- Handle A/B testing variations on the target site
+- Work reliably across different sections of the website
+- Reduce maintenance overhead
+
+To enable/disable this feature, set the `AI_ENABLED` environment variable to `true` or `false`.
+
+### 3. Data Processing with Pandas
 
 Post-processes the scraped data to calculate the following metrics:
 - **Word count** in each title
 - **Character count** in each title
 - **List of words that start with a capital letter** in each title
 
-### 3. BigQuery Integration
+### 4. BigQuery Integration
 
 Uploads the processed data to Google BigQuery for further analysis:
 - Automatically creates datasets and tables if they don't exist
 - Uses Google Cloud service account credentials for authentication
 - Handles data type conversion for proper BigQuery storage
 
-### 4. Dockerization
+### 5. Dockerization
 
 Complete containerization of the application for portable execution:
 - Includes Chrome browser installation for headless web scraping
@@ -58,7 +81,7 @@ Complete containerization of the application for portable execution:
 - Optimized layer caching for faster builds
 - Scripts for building and running the container
 
-### 5. Deployment Automation
+### 6. Deployment Automation
 
 Automated deployment to Google Cloud Run:
 - Single script for the entire deployment process
@@ -347,6 +370,34 @@ The script generates the following output files in the `output` directory:
 
 Additionally, the data is stored in BigQuery under the dataset and table specified in the environment variables.
 
-## Next Steps
+## AI-Assisted Dynamic Scraping
 
-- Complete deployment script for Cloud Run
+The project now includes an optional AI-assisted scraper that uses OpenAI's API to dynamically identify page elements, making it resilient to site layout changes.
+
+### How It Works
+
+1. **HTML Analysis**: The scraper sends a sample of the page's HTML structure to OpenAI's API.
+2. **Intelligent Selector Detection**: The AI model analyzes the HTML and determines the most appropriate CSS selectors for articles, titles, kickers, images, and links.
+3. **Dynamic Extraction**: Instead of hardcoded selectors, the scraper uses the AI-identified selectors to extract data.
+4. **Fallback Mechanism**: If AI identification fails, the scraper falls back to predefined selectors.
+
+### Using the AI Scraper
+
+1. Set your OpenAI API key:
+   ```bash
+   export OPENAI_API_KEY="your-openai-api-key"
+   ```
+   Or add it to your `.env` file:
+   ```
+   OPENAI_API_KEY=your-openai-api-key
+   ```
+
+2. Run the AI-assisted version:
+   ```bash
+   python src/ai_main.py
+   ```
+
+3. Optional parameters:
+   ```bash
+   python src/ai_main.py --max-articles 20 --url "https://www.yogonet.com/international/"
+   ```
