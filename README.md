@@ -35,29 +35,6 @@ The scraper extracts the following information from each Yogonet (https://www.yo
 - **Image**: Article image URL
 - **Link**: URL to the full article
 
-### 2. AI-Assisted Dynamic Scraping
-
-The scraper uses artificial intelligence to adapt to changes in website structure:
-- **Automatic selector detection**: Uses OpenAI API to analyze HTML and determine optimal CSS selectors
-- **Resilience to layout changes**: Adapts if the site changes its HTML structure, CSS classes, or element hierarchy
-- **Fallback mechanism**: Uses predefined selectors if AI analysis fails or is disabled
-- **Zero configuration**: Works out of the box with minimal setup
-
-How it works:
-1. The scraper loads the target webpage
-2. The HTML structure is sent to OpenAI's GPT model
-3. The AI analyzes the HTML and determines the most accurate CSS selectors
-4. These selectors are used to extract the content
-5. If any selector fails, the system logs the issue and uses fallbacks
-
-This approach allows the scraper to:
-- Adapt to website redesigns without code changes
-- Handle A/B testing variations on the target site
-- Work reliably across different sections of the website
-- Reduce maintenance overhead
-
-To enable/disable this feature, set the `AI_ENABLED` environment variable to `true` or `false`.
-
 ### 3. Data Processing with Pandas
 
 Post-processes the scraped data to calculate the following metrics:
