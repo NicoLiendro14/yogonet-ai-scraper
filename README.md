@@ -14,19 +14,29 @@ A Google Cloud Run job that performs web scraping, data processing, and automate
 ├── src/                 # Source code
 │   ├── database/        # BigQuery integration code
 │   ├── processing/      # Data processing code
+│   │   └── data_processor.py  # Data processing with Pandas
 │   ├── scraper/         # Web scraping code
 │   │   └── yogonet_scraper.py  # Yogonet scraper
 │   └── main.py          # Main entry point
 └── requirements.txt     # Project dependencies
 ```
 
-## Part 1: Web Scraping with Selenium
+## Features
+
+### 1. Web Scraping with Selenium
 
 The scraper extracts the following information from each Yogonet (https://www.yogonet.com/international/) article:
 - **Title**: Main article headline
 - **Kicker**: Text above the main headline
 - **Image**: Article image URL
 - **Link**: URL to the full article
+
+### 2. Data Processing with Pandas
+
+Post-processes the scraped data to calculate the following metrics:
+- **Word count** in each title
+- **Character count** in each title
+- **List of words that start with a capital letter** in each title
 
 ## Requirements
 
@@ -64,9 +74,14 @@ docker build -t yogonet-scraper -f docker/Dockerfile .
 docker run -v $(pwd)/output:/app/output yogonet-scraper
 ```
 
+## Output
+
+The script generates the following output files in the `output` directory:
+- `scraped_data.json`: Raw scraped data
+- `processed_data.csv`: Processed data in CSV format
+- `processed_data.json`: Processed data in JSON format
+
 ## Next Steps
 
-- Implement data post-processing with Pandas
 - Implement BigQuery integration
-- Complete Dockerfile
-- Create Cloud Run deployment script
+- Complete deployment script for Cloud Run
