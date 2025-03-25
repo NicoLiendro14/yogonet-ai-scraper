@@ -13,6 +13,7 @@ A Google Cloud Run job that performs web scraping, data processing, and automate
 ├── output/              # Output directory (created at runtime)
 ├── src/                 # Source code
 │   ├── database/        # BigQuery integration code
+│   │   └── bigquery_client.py  # BigQuery client
 │   ├── processing/      # Data processing code
 │   │   └── data_processor.py  # Data processing with Pandas
 │   ├── scraper/         # Web scraping code
@@ -38,6 +39,13 @@ Post-processes the scraped data to calculate the following metrics:
 - **Character count** in each title
 - **List of words that start with a capital letter** in each title
 
+### 3. BigQuery Integration
+
+Uploads the processed data to Google BigQuery for further analysis:
+- Automatically creates datasets and tables if they don't exist
+- Uses Google Cloud service account credentials for authentication
+- Handles data type conversion for proper BigQuery storage
+
 ## Requirements
 
 - Python 3.8+
@@ -45,7 +53,13 @@ Post-processes the scraped data to calculate the following metrics:
 - Docker (for containerization)
 - Google Cloud account with BigQuery and Cloud Run permissions
 
-## Usage
+## Setup
+
+### Google Cloud Setup
+
+1. Create a Google Cloud project
+2. Create a service account with BigQuery permissions
+3. Download the service account key as JSON
 
 ### Local Setup
 
@@ -62,17 +76,36 @@ Post-processes the scraped data to calculate the following metrics:
    pip install -r requirements.txt
    ```
 
-3. Run the scraper:
+3. Set environment variables:
+   ```
+   # Linux/macOS
+   export GOOGLE_CLOUD_PROJECT="your-project-id"
+   export GOOGLE_APPLICATION_CREDENTIALS="path/to/service-account-key.json"
+   
+   # Windows PowerShell
+   $env:GOOGLE_CLOUD_PROJECT="your-project-id"
+   $env:GOOGLE_APPLICATION_CREDENTIALS="path\to\service-account-key.json"
+   ```
+
+4. Run the scraper:
    ```
    python src/main.py
    ```
 
-### Docker Execution
+## Docker Execution
 
-```
-docker build -t yogonet-scraper -f docker/Dockerfile .
-docker run -v $(pwd)/output:/app/output yogonet-scraper
-```
+1. Build the Docker image:
+   ```
+   docker build -t yogonet-scraper -f docker/Dockerfile .
+   ```
+
+2. Run the container with your Google Cloud credentials:
+   ```
+   docker run -v $(pwd)/output:/app/output \
+     -v /path/to/credentials.json:/app/credentials/service_account.json \
+     -e GOOGLE_CLOUD_PROJECT="your-project-id" \
+     yogonet-scraper
+   ```
 
 ## Output
 
@@ -81,7 +114,8 @@ The script generates the following output files in the `output` directory:
 - `processed_data.csv`: Processed data in CSV format
 - `processed_data.json`: Processed data in JSON format
 
+Additionally, the data is stored in BigQuery under the dataset and table specified in the environment variables.
+
 ## Next Steps
 
-- Implement BigQuery integration
 - Complete deployment script for Cloud Run

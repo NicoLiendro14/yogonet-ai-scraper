@@ -19,9 +19,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
 
-RUN mkdir -p /app/output
+RUN mkdir -p /app/output /app/credentials
 
 ENV PYTHONUNBUFFERED=1
 ENV MAX_ARTICLES=10
+ENV GOOGLE_APPLICATION_CREDENTIALS="/app/credentials/service_account.json"
+ENV BIGQUERY_DATASET_ID="yogonet_news"
+ENV BIGQUERY_TABLE_ID="scraped_articles"
 
 CMD ["python", "src/main.py"]
