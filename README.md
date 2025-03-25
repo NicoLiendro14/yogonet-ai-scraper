@@ -7,7 +7,7 @@ A Google Cloud Run job that performs web scraping, data processing, and automate
 ```
 .
 ├── deployment/          # Deployment scripts
-│   └── deploy.sh        # Google Cloud Run deployment script
+│   └── deploy.sh        # Script for Google Cloud Run deployment
 ├── docker/              # Docker files
 │   ├── Dockerfile       # Dockerfile for building the image
 │   ├── build-and-run.sh # Bash script to build and run the Docker container
@@ -21,6 +21,7 @@ A Google Cloud Run job that performs web scraping, data processing, and automate
 │   ├── scraper/         # Web scraping code
 │   │   └── yogonet_scraper.py  # Yogonet scraper
 │   └── main.py          # Main entry point
+├── .env.example         # Example environment variables file
 └── requirements.txt     # Project dependencies
 ```
 
@@ -57,12 +58,23 @@ Complete containerization of the application for portable execution:
 - Optimized layer caching for faster builds
 - Scripts for building and running the container
 
+### 5. Deployment Automation
+
+Automated deployment to Google Cloud Run:
+- Single script for the entire deployment process
+- Builds and tags Docker image
+- Uploads image to Google Artifact Registry
+- Creates or updates Cloud Run Job
+- Configures environment variables and secrets
+- Executes the job immediately after deployment
+
 ## Requirements
 
 - Python 3.8+
 - Chrome/Chromium (for local development)
 - Docker (for containerization)
 - Google Cloud account with BigQuery and Cloud Run permissions
+- Google Cloud SDK (gcloud) for deployment
 
 ## Setup
 
@@ -71,6 +83,13 @@ Complete containerization of the application for portable execution:
 1. Create a Google Cloud project
 2. Create a service account with BigQuery permissions
 3. Download the service account key as JSON and save it as `creds.json` in the project root
+4. Enable required APIs:
+   ```bash
+   gcloud services enable artifactregistry.googleapis.com \
+       run.googleapis.com \
+       secretmanager.googleapis.com \
+       bigquery.googleapis.com
+   ```
 
 ### Local Setup
 
@@ -89,13 +108,9 @@ Complete containerization of the application for portable execution:
 
 3. Set environment variables:
    ```
-   # Linux/macOS
-   export GOOGLE_CLOUD_PROJECT="your-project-id"
-   export GOOGLE_APPLICATION_CREDENTIALS="path/to/service-account-key.json"
-   
-   # Windows PowerShell
-   $env:GOOGLE_CLOUD_PROJECT="your-project-id"
-   $env:GOOGLE_APPLICATION_CREDENTIALS="path\to\service-account-key.json"
+   # Create .env file from example
+   cp .env.example .env
+   # Edit .env with your settings
    ```
 
 4. Run the scraper:
@@ -172,19 +187,156 @@ docker run -it --rm \
 
 > **Note for Windows users**: When using Docker in Windows environments, especially with MINGW64 (Git Bash), use absolute Windows-style paths with forward slashes as shown above.
 
-## Environment Variables
+## Cloud Deployment
 
-The application can be configured using the following environment variables:
+### Deploying to Google Cloud Run
+
+The project includes a deployment script that automates the entire process:
+
+```bash
+# Make the script executable (Linux/macOS)
+chmod +x deployment/deploy.sh
+
+# Run the deployment script
+./deployment/deploy.sh
+```
+
+This script will:
+1. Build the Docker image
+2. Tag it for Google Artifact Registry
+3. Push the image to the registry
+4. Create a secret in Secret Manager for credentials
+5. Deploy the image as a Cloud Run job
+6. Execute the job immediately
+
+### GCP Configuration for Cloud Deployment
+
+Before running the `deploy.sh` script, you need to configure your Google Cloud environment correctly:
+
+1. **Install and initialize Google Cloud SDK (gcloud):**
+   ```bash
+   # Download and install gcloud SDK from https://cloud.google.com/sdk/docs/install
+   
+   # Initialize gcloud and login
+   gcloud init
+   gcloud auth login
+   ```
+
+2. **Set the active project:**
+   ```bash
+   gcloud config set project YOUR_PROJECT_ID
+   ```
+
+3. **Enable required APIs:**
+   ```bash
+   gcloud services enable artifactregistry.googleapis.com \
+       run.googleapis.com \
+       secretmanager.googleapis.com \
+       bigquery.googleapis.com
+   ```
+
+4. **Create a service account and grant required permissions:**
+   ```bash
+   # Create service account
+   gcloud iam service-accounts create yogonet-scraper-sa \
+       --display-name="Yogonet Scraper Service Account"
+   
+   # Grant required roles
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+       --member="serviceAccount:yogonet-scraper-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+       --role="roles/bigquery.admin"
+   
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+       --member="serviceAccount:yogonet-scraper-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+       --role="roles/artifactregistry.writer"
+   
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+       --member="serviceAccount:yogonet-scraper-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+       --role="roles/run.admin"
+   ```
+
+5. **Create and download service account key:**
+   ```bash
+   # Create and download key
+   gcloud iam service-accounts keys create creds.json \
+       --iam-account=yogonet-scraper-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com
+   ```
+
+6. **Configure Docker for Artifact Registry authentication:**
+   ```bash
+   # Configure Docker to use gcloud as a credential helper
+   gcloud auth configure-docker REGION-docker.pkg.dev
+   ```
+
+7. **Create Artifact Registry repository:**
+   ```bash
+   # Create repository
+   gcloud artifacts repositories create yogonet-scraper \
+       --repository-format=docker \
+       --location=REGION \
+       --description="Yogonet Scraper Docker images"
+   ```
+
+After completing these steps, you can run the `deploy.sh` script to deploy the application to Cloud Run.
+
+### Local Deployment with Docker
+
+For development or testing purposes, you can use the `deploy_local.sh` script to run the application locally using Docker:
+
+```bash
+# Make the script executable (Linux/macOS)
+chmod +x deployment/deploy_local.sh
+
+# Run the script
+./deployment/deploy_local.sh
+```
+
+On Windows (using Git Bash, WSL, or similar):
+```bash
+# Run the script
+bash deployment/deploy_local.sh
+```
+
+This script will:
+1. Build the Docker image locally with a timestamp-based tag
+2. Run the container with the appropriate volume mounts for output and credentials
+3. Display the results from the output directory
+
+#### Prerequisites for Local Deployment
+
+Before running the `deploy_local.sh` script:
+
+1. **Install Docker** on your local machine
+   - [Docker Desktop for Windows/Mac](https://www.docker.com/products/docker-desktop)
+   - [Docker Engine for Linux](https://docs.docker.com/engine/install/)
+
+2. **Create a service account key file** (if connecting to BigQuery):
+   - Save the service account key as `creds.json` in the project root directory
+   - This file should have permissions to access BigQuery in your GCP project
+
+3. **Create a .env file** (optional) with the following variables:
+   ```
+   GOOGLE_CLOUD_PROJECT=your-project-id
+   MAX_ARTICLES=10      # Number of articles to scrape
+   ```
+
+The `deploy_local.sh` script works without modifying any Google Cloud resources and is ideal for development, testing, or running the scraper in environments without Google Cloud access.
+
+### Environment Configuration
+
+You can customize the deployment by setting variables in your `.env` file:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GOOGLE_CLOUD_PROJECT` | Google Cloud Project ID | (required) |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account credentials | `/app/credentials/service_account.json` |
-| `BIGQUERY_DATASET_ID` | BigQuery dataset ID | `yogonet_news` |
-| `BIGQUERY_TABLE_ID` | BigQuery table ID | `scraped_articles` |
-| `MAX_ARTICLES` | Maximum number of articles to scrape | `10` |
-| `HEADLESS` | Whether to run Chrome in headless mode | `true` |
-| `CHROME_OPTIONS` | Custom Chrome options | (built-in safe defaults) |
+| `GOOGLE_CLOUD_PROJECT` | GCP Project ID | (from gcloud config) |
+| `CLOUD_RUN_REGION` | GCP Region for deployment | `us-central1` |
+| `CLOUD_RUN_SERVICE_NAME` | Name of the Cloud Run job | `yogonet-scraper-job` |
+| `ARTIFACT_REGISTRY_REPO` | Artifact Registry repository path | auto-generated |
+| `GCP_CREDENTIALS_SECRET_NAME` | Name for Secret Manager credentials | `yogonet-scraper-credentials` |
+| `MAX_ARTICLES` | Maximum articles to scrape | `10` |
+| `MEMORY_LIMIT` | Memory limit for the Cloud Run job | `1Gi` |
+| `CPU_LIMIT` | CPU limit for the Cloud Run job | `1` |
+| `TIMEOUT` | Maximum job execution time | `600s` |
 
 ## Output
 
